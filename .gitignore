@@ -1,0 +1,8 @@
+# Export and input directories (local only)
+enter/
+putout/
+
+# Node/Vue typical ignores (future-proof)
+node_modules/
+.DS_Store
+*.log
