@@ -16,6 +16,8 @@ const app = createApp({
       packName: 'cobble-pack',
       speciesId: '',
       packDescription: 'CobbleCreator datapack by JX-YL',
+      // 项目版本（v0.2.0 项目文件用）
+      projectVersion: '0.2.0',
       // 语言配置（四项）：中文/英文 名称与描述
       zhName: '',
       zhDesc: '',
@@ -231,6 +233,273 @@ const app = createApp({
     }
 
     /**
+     * 构建项目文件（*.ccproj）的 JSON 对象
+     * @function buildProjectJson
+     * @param {object} form - 当前表单数据
+     * @returns {object} 项目文件对象（不用于直接导入游戏）
+     */
+    function buildProjectJson(form) {
+      return {
+        version: form.projectVersion || '0.2.0',
+        namespace: form.namespace || 'cobblemon',
+        meta: {
+          packName: form.packName || (form.speciesId ? `${form.speciesId}-pack` : 'cobble-pack'),
+          description: form.packDescription || 'CobbleCreator datapack by JX-YL',
+        },
+        language: {
+          zh_cn: { name: form.zhName || '', desc: form.zhDesc || '' },
+          en_us: { name: form.enName || '', desc: form.enDesc || '' },
+        },
+        species: [
+          {
+            id: form.speciesId || '',
+            name: form.enName || form.zhName || form.speciesId || '',
+            primaryType: form.primaryType,
+            secondaryType: form.secondaryType || undefined,
+            baseStats: { ...form.baseStats },
+            height: form.height,
+            weight: form.weight,
+            catchRate: form.catchRate,
+            maleRatio: form.maleRatio,
+            experienceGroup: form.experienceGroup,
+            baseFriendship: form.baseFriendship,
+            eggGroups: Array.isArray(form.eggGroups) ? [...form.eggGroups] : [],
+          }
+        ],
+        spawns: [
+          { speciesId: form.speciesId || '', data: buildSpawnJson(form.speciesId || '') }
+        ],
+        extensions: { moves: [], abilities: [], types: [], statuses: [], items: [] },
+      };
+    }
+
+    /**
+     * 对项目文件进行基础校验
+     * @function validateProject
+     * @param {object} project - 项目文件对象
+     * @returns {{valid:boolean, errors:string[], warnings:string[]}} 校验结果
+     */
+    function validateProject(project) {
+      const errors = [];
+      const warnings = [];
+
+      if (!project || typeof project !== 'object') {
+        errors.push('项目文件必须是对象');
+        return { valid: false, errors, warnings };
+      }
+
+      if (!project.version) warnings.push('缺少版本字段，已假定为 0.2.0');
+      if (!project.namespace) warnings.push('缺少命名空间，已默认 cobblemon');
+
+      if (!Array.isArray(project.species) || project.species.length === 0) {
+        errors.push('species 列表为空或缺失（至少需 1 项）');
+      } else {
+        const s = project.species[0];
+        if (!s.id) errors.push('species[0].id 为空');
+        if (!s.primaryType) errors.push('species[0].primaryType 为空');
+        const bs = s.baseStats || {};
+        const needed = ['hp','attack','defence','special_attack','special_defence','speed'];
+        for (const k of needed) {
+          if (typeof bs[k] !== 'number') warnings.push(`baseStats.${k} 缺失或非数字，已回退默认`);
+        }
+        if (typeof s.maleRatio !== 'number' || s.maleRatio < 0 || s.maleRatio > 1) warnings.push('maleRatio 建议为 0~1 的数字');
+        if (typeof s.catchRate !== 'number') warnings.push('catchRate 建议为数字');
+        if (typeof s.baseFriendship !== 'number') warnings.push('baseFriendship 建议为数字');
+      }
+
+      // 语言项建议但非强制
+      if (!project.language || (!project.language.zh_cn && !project.language.en_us)) {
+        warnings.push('未提供语言项，将在导出时使用 speciesId 作为显示名');
+      }
+
+      return { valid: errors.length === 0, errors, warnings };
+    }
+
+    /**
+     * 迁移旧版本项目文件到 v0.2.0 结构（容错）
+     * @function migrateProject
+     * @param {object} project - 原始项目文件对象
+     * @returns {object} 迁移后的项目对象
+     */
+    function migrateProject(project) {
+      if (!project || typeof project !== 'object') return project;
+
+      const migrated = { ...project };
+      // 版本字段标准化
+      if (!migrated.version) migrated.version = '0.2.0';
+
+      // 语言从旧字段回填（兼容 v0.1.x 的临时字段）
+      migrated.language = migrated.language || {};
+      const zh = migrated.language.zh_cn || {};
+      const en = migrated.language.en_us || {};
+
+      if (!en.name && migrated.enName) en.name = migrated.enName;
+      if (!en.desc && migrated.enDesc) en.desc = migrated.enDesc;
+      if (!zh.name && migrated.zhName) zh.name = migrated.zhName;
+      if (!zh.desc && migrated.zhDesc) zh.desc = migrated.zhDesc;
+      migrated.language.zh_cn = zh;
+      migrated.language.en_us = en;
+
+      // species 数组规范化
+      if (!Array.isArray(migrated.species) || migrated.species.length === 0) {
+        migrated.species = [];
+        const s = {
+          id: migrated.speciesId || '',
+          name: migrated.enName || migrated.zhName || migrated.speciesId || '',
+          primaryType: migrated.primaryType,
+          secondaryType: migrated.secondaryType,
+          baseStats: migrated.baseStats || undefined,
+          height: migrated.height,
+          weight: migrated.weight,
+          catchRate: migrated.catchRate,
+          maleRatio: migrated.maleRatio,
+          experienceGroup: migrated.experienceGroup,
+          baseFriendship: migrated.baseFriendship,
+          eggGroups: migrated.eggGroups || [],
+        };
+        migrated.species.push(s);
+      }
+
+      // meta 规范化
+      migrated.meta = migrated.meta || { packName: migrated.packName, description: migrated.packDescription };
+
+      return migrated;
+    }
+
+    /**
+     * 将项目文件应用到表单
+     * @function applyProjectToForm
+     * @param {object} project - 项目文件对象（已迁移）
+     * @returns {void}
+     */
+    function applyProjectToForm(project) {
+      try {
+        form.projectVersion = project.version || '0.2.0';
+        form.namespace = project.namespace || form.namespace;
+        form.packName = (project.meta && project.meta.packName) || form.packName;
+        form.packDescription = (project.meta && project.meta.description) || form.packDescription;
+
+        const lang = project.language || {};
+        const zh = lang.zh_cn || {};
+        const en = lang.en_us || {};
+        form.zhName = zh.name || '';
+        form.zhDesc = zh.desc || '';
+        form.enName = en.name || '';
+        form.enDesc = en.desc || '';
+
+        if (Array.isArray(project.species) && project.species.length) {
+          const s = project.species[0];
+          form.speciesId = s.id || form.speciesId;
+          form.primaryType = s.primaryType || form.primaryType;
+          form.secondaryType = s.secondaryType || '';
+          form.baseStats = s.baseStats ? { ...form.baseStats, ...s.baseStats } : form.baseStats;
+          form.height = typeof s.height === 'number' ? s.height : form.height;
+          form.weight = typeof s.weight === 'number' ? s.weight : form.weight;
+          form.catchRate = typeof s.catchRate === 'number' ? s.catchRate : form.catchRate;
+          form.maleRatio = typeof s.maleRatio === 'number' ? s.maleRatio : form.maleRatio;
+          form.experienceGroup = s.experienceGroup || form.experienceGroup;
+          form.baseFriendship = typeof s.baseFriendship === 'number' ? s.baseFriendship : form.baseFriendship;
+          form.eggGroups = Array.isArray(s.eggGroups) ? s.eggGroups : [];
+        }
+      } catch (e) {
+        console.error(e);
+        ElementPlus.ElMessage.error('应用项目到表单时发生错误');
+      }
+    }
+
+    /**
+     * 保存当前项目为 .ccproj 文件
+     * @function saveProject
+     * @returns {Promise<void>}
+     */
+    async function saveProject() {
+      const project = buildProjectJson(form);
+      const result = validateProject(project);
+      if (!result.valid) {
+        ElementPlus.ElMessage.error(`项目校验失败：\n${result.errors.join('\n')}`);
+        return;
+      }
+      if (result.warnings.length) {
+        ElementPlus.ElMessage.warning(result.warnings.join('\n'));
+      }
+
+      try {
+        if ('showSaveFilePicker' in window) {
+          const suggestedName = `${project.meta.packName || 'cobble-pack'}.ccproj`;
+          const handle = await window.showSaveFilePicker({
+            suggestedName,
+            types: [{ description: 'CobbleCreator Project', accept: { 'application/json': ['.ccproj', '.json'] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(JSON.stringify(project, null, 2));
+          await writable.close();
+          ElementPlus.ElMessage.success('项目已保存为 .ccproj');
+        } else {
+          // 回退：下载文件
+          const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${project.meta.packName || 'cobble-pack'}.ccproj`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          ElementPlus.ElMessage.success('项目已下载为 .ccproj');
+        }
+      } catch (e) {
+        console.error(e);
+        ElementPlus.ElMessage.error('保存项目失败');
+      }
+    }
+
+    /**
+     * 从 .ccproj 文件加载项目并应用到表单
+     * @function loadProject
+     * @returns {Promise<void>}
+     */
+    async function loadProject() {
+      try {
+        let file;
+        if ('showOpenFilePicker' in window) {
+          const [handle] = await window.showOpenFilePicker({
+            types: [{ description: 'CobbleCreator Project', accept: { 'application/json': ['.ccproj', '.json'] } }],
+            multiple: false,
+          });
+          file = await handle.getFile();
+        } else {
+          // 回退：input 选择
+          await new Promise((resolve, reject) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.ccproj,.json,application/json';
+            input.onchange = () => resolve(input.files && input.files[0]);
+            input.click();
+          }).then(f => { file = f; });
+          if (!file) return;
+        }
+
+        const text = await file.text();
+        /** @type {any} */
+        const raw = JSON.parse(text);
+        const migrated = migrateProject(raw);
+        const result = validateProject(migrated);
+        if (!result.valid) {
+          ElementPlus.ElMessage.error(`加载的项目校验失败：\n${result.errors.join('\n')}`);
+          return;
+        }
+        if (result.warnings.length) {
+          ElementPlus.ElMessage.warning(result.warnings.join('\n'));
+        }
+        applyProjectToForm(migrated);
+        ElementPlus.ElMessage.success('项目已加载并应用到表单');
+      } catch (e) {
+        console.error(e);
+        ElementPlus.ElMessage.error('加载项目失败');
+      }
+    }
+
+    /**
      * 导出数据包主流程
      * @function exportPack
      * @description 通过 File System Access API 生成完整目录与文件：pack.mcmeta、语言、species、spawn。
@@ -276,7 +545,7 @@ const app = createApp({
       ElementPlus.ElMessage.success(`导出成功！已生成子文件夹 "${packFolderName}"，请按说明放入 resourcepacks 与 datapacks 测试`);
     }
 
-    return { form, typeOptions, useExample, exportPack, importTemplateFromFile };
+    return { form, typeOptions, useExample, exportPack, importTemplateFromFile, saveProject, loadProject };
   }
 });
 

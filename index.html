@@ -53,6 +53,13 @@
           <el-input v-model="form.enDesc" type="textarea" :rows="3" />
         </el-form-item>
 
+        <el-divider>项目文件（v0.2.0）</el-divider>
+        <el-alert title="保存/加载项目文件（*.ccproj）不用于直接导入游戏，仅用于二次编辑与分享" type="info" show-icon :closable="false" />
+        <div class="footer">
+          <el-button type="success" @click="saveProject">保存项目（*.ccproj）</el-button>
+          <el-button @click="loadProject">加载项目（*.ccproj）</el-button>
+        </div>
+
       <el-divider>类型与数值</el-divider>
       <div class="grid">
         <el-form-item label="主属性">
