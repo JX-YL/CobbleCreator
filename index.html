@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CobbleCreator v0.1.0</title>
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <style>
+      body { background:#0b0e14; color:#e6edf3; }
+      .container { max-width: 1080px; margin: 24px auto; padding: 24px; background:#121826; border-radius:12px; }
+      .grid { display:grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+      .footer { margin-top: 24px; display:flex; gap:12px; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="container">
+      <h2>CobbleCreator v0.1.0 原型</h2>
+      <p class="mono">作者：江下犹泷（JX-YL）｜基于 Vue3 + Element Plus</p>
+
+      <el-form label-width="140px" label-position="left">
+        <el-divider>基础信息</el-divider>
+        <div class="grid">
+          <el-form-item label="命名空间">
+            <el-input v-model="form.namespace" placeholder="例如 cobblemon" />
+          </el-form-item>
+          <el-form-item label="物种ID">
+            <el-input v-model="form.speciesId" placeholder="例如 tentaquil" />
+          </el-form-item>
+
+          <el-form-item label="包描述">
+            <el-input v-model="form.packDescription" />
+          </el-form-item>
+          <el-form-item label="包名称">
+            <el-input v-model="form.packName" placeholder="例如 tentaquil-pack" />
+          </el-form-item>
+        </div>
+
+        <el-divider>语言配置</el-divider>
+        <div class="grid">
+          <el-form-item label="中文名称">
+            <el-input v-model="form.zhName" />
+          </el-form-item>
+          <el-form-item label="英文名称">
+            <el-input v-model="form.enName" />
+          </el-form-item>
+        </div>
+        <el-form-item label="中文描述">
+          <el-input v-model="form.zhDesc" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-form-item label="英文描述">
+          <el-input v-model="form.enDesc" type="textarea" :rows="3" />
+        </el-form-item>
+
+      <el-divider>类型与数值</el-divider>
+      <div class="grid">
+        <el-form-item label="主属性">
+          <el-select v-model="form.primaryType" filterable>
+            <el-option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="副属性">
+          <el-select v-model="form.secondaryType" filterable clearable>
+            <el-option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
+          </el-select>
+        </el-form-item>
+      </div>
+
+        <div class="grid">
+          <el-form-item label="HP">
+            <el-input-number v-model="form.baseStats.hp" :min="1" :max="255" />
+          </el-form-item>
+          <el-form-item label="攻击">
+            <el-input-number v-model="form.baseStats.attack" :min="1" :max="255" />
+          </el-form-item>
+          <el-form-item label="防御">
+            <el-input-number v-model="form.baseStats.defence" :min="1" :max="255" />
+          </el-form-item>
+          <el-form-item label="特攻">
+            <el-input-number v-model="form.baseStats.special_attack" :min="1" :max="255" />
+          </el-form-item>
+          <el-form-item label="特防">
+            <el-input-number v-model="form.baseStats.special_defence" :min="1" :max="255" />
+          </el-form-item>
+          <el-form-item label="速度">
+            <el-input-number v-model="form.baseStats.speed" :min="1" :max="255" />
+          </el-form-item>
+        </div>
+
+        <el-divider>生理参数</el-divider>
+        <div class="grid">
+          <el-form-item label="身高（dm）">
+            <el-input-number v-model="form.height" :min="1" :max="100" />
+          </el-form-item>
+          <el-form-item label="体重（hg）">
+            <el-input-number v-model="form.weight" :min="1" :max="10000" />
+          </el-form-item>
+          <el-form-item label="捕获率">
+            <el-input-number v-model="form.catchRate" :min="1" :max="255" />
+          </el-form-item>
+          <el-form-item label="雄性比例">
+            <el-input-number v-model="form.maleRatio" :step="0.05" :min="0" :max="1" />
+          </el-form-item>
+        </div>
+
+        <el-divider>成长与亲密</el-divider>
+        <div class="grid">
+          <el-form-item label="成长速率（exp group)">
+            <el-select v-model="form.experienceGroup" filterable>
+              <el-option label="slow" value="slow" />
+              <el-option label="medium_slow" value="medium_slow" />
+              <el-option label="medium_fast" value="medium_fast" />
+              <el-option label="fast" value="fast" />
+              <el-option label="fluctuating" value="fluctuating" />
+              <el-option label="erratic" value="erratic" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="基础亲密度">
+            <el-input-number v-model="form.baseFriendship" :min="0" :max="255" />
+          </el-form-item>
+        </div>
+
+        <el-divider>蛋组（可多选）</el-divider>
+        <el-form-item label="Egg Groups">
+          <el-select v-model="form.eggGroups" multiple filterable allow-create default-first-option>
+            <el-option label="monster" value="monster" />
+            <el-option label="field" value="field" />
+            <el-option label="fairy" value="fairy" />
+            <el-option label="dragon" value="dragon" />
+            <el-option label="bug" value="bug" />
+            <el-option label="flying" value="flying" />
+            <el-option label="mineral" value="mineral" />
+            <el-option label="amorphous" value="amorphous" />
+          </el-select>
+        </el-form-item>
+
+        <div class="footer">
+          <el-button type="primary" @click="exportPack">导出数据包</el-button>
+          <el-button @click="useExample">填充示例</el-button>
+          <el-button @click="() => $refs.fileInput.click()">导入参考Species模板</el-button>
+          <input ref="fileInput" type="file" accept=".json" style="display:none" @change="(e) => importTemplateFromFile(e.target.files[0])" />
+        </div>
+      </el-form>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
