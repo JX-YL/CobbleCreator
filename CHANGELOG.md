@@ -25,3 +25,10 @@
 - 项目：新增测试项目 <mcfile name="mistlynx.ccproj" path="e:\AI Super Personal Studio\Workspace\Cobblemon\CobbleCreator\enter\mistlynx.ccproj"></mcfile>（不随版本发布打包，作为本地示例）
 - 维护：更新 `.gitignore`（保持 `enter/` 与 `putout/` 忽略策略）；补充函数级注释以便后续维护
 - 作者：江下犹泷（JX-YL）
+
+## v0.3.1 (召唤修复与语言/掉落增强)
+- 修复：导出的物种 JSON 现包含必需的 `id` 字段；导出路径从 `data/cobblemon/species/custom/` 调整为 `data/cobblemon/species/<id>.json`，确保物种可被注册与召唤。
+- 语言：描述支持按换行拆分为 `desc1`/`desc2`，并在 `species.pokedex` 生成时同步引用键。
+- 掉落：解析文本新增可选数量范围语法（`item:percent@数量范围`），导出与项目回填保持一致。
+- 包格式：保留 `pack_format` 自定义字段并在导出时写入。
+- 测试：使用本地测试项目 `stormshade.ccproj` 验证召唤与导出结构（不随版本发布打包）。

@@ -1,7 +1,7 @@
 // CobbleCreator v0.1.0 前端原型
 // 作者：江下犹泷（JX-YL）
 
-const { createApp, ref, reactive } = Vue;
+const { createApp, ref, reactive, computed } = Vue;
 
 // 创建并配置应用：注册 Element Plus，确保组件正常渲染
 const app = createApp({
@@ -10,12 +10,40 @@ const app = createApp({
       'normal','fire','water','grass','electric','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'
     ];
 
+    // 成长速率与蛋组选项（带中文标签），用于下拉选择
+    const experienceGroupOptions = [
+      { label: '慢速 slow', value: 'slow' },
+      { label: '中慢 medium_slow', value: 'medium_slow' },
+      { label: '中快 medium_fast', value: 'medium_fast' },
+      { label: '快速 fast', value: 'fast' },
+      { label: '波动 fluctuating', value: 'fluctuating' },
+      { label: '变化 erratic', value: 'erratic' }
+    ];
+    const eggGroupOptions = [
+      { label: '怪兽 monster', value: 'monster' },
+      { label: '陆上 field', value: 'field' },
+      { label: '妖精 fairy', value: 'fairy' },
+      { label: '龙 dragon', value: 'dragon' },
+      { label: '虫 bug', value: 'bug' },
+      { label: '飞行 flying', value: 'flying' },
+      { label: '矿物 mineral', value: 'mineral' },
+      { label: '不定形 amorphous', value: 'amorphous' },
+      { label: '植物 grass', value: 'grass' },
+      { label: '人型 human_like', value: 'human_like' },
+      { label: '水中一 water_1', value: 'water_1' },
+      { label: '水中二 water_2', value: 'water_2' },
+      { label: '水中三 water_3', value: 'water_3' },
+      { label: '百变怪 ditto', value: 'ditto' },
+      { label: '不可孵化 no_eggs', value: 'no_eggs' }
+    ];
+
     // 表单数据模型（v0.3.0 扩展）
     const form = reactive({
       namespace: 'cobblemon',
       packName: 'cobble-pack',
       speciesId: '',
       packDescription: 'CobbleCreator datapack by JX-YL',
+      packFormat: 48,
       // 项目版本（用于 .ccproj 保存/加载）
       projectVersion: '0.3.0',
       // 语言配置（四项）：中文/英文 名称与描述
@@ -56,8 +84,11 @@ const app = createApp({
       // v0.3.1：行为与掉落
       behaviour: {
         walkSpeed: '',
+        canLook: false,
         canSwim: false,
         swimSpeed: '',
+        canSwimInWater: false,
+        canBreatheUnderwater: false,
         canFly: false,
         flySpeed: '',
         canSleep: false,
@@ -117,10 +148,10 @@ const app = createApp({
      * @param {string} description - 包描述
      * @returns {object} pack.mcmeta 对应的对象
      */
-    function buildPackMcmeta(description) {
+    function buildPackMcmeta(description, format) {
       return {
         pack: {
-          pack_format: 48,
+          pack_format: (typeof format === 'number' && format > 0) ? format : 48,
           description,
         },
       };
@@ -137,10 +168,35 @@ const app = createApp({
      */
     function buildLangJsonForLocale(locale, speciesId, name, desc) {
       const keyBase = `cobblemon.species.${speciesId}`;
+      // 支持单段描述或双段描述（desc1/desc2），优先按换行切分
+      const lines = typeof desc === 'string' ? desc.split('\n').filter(s => s.trim().length) : [];
+      if (lines.length >= 2) {
+        return {
+          [`${keyBase}.name`]: name || speciesId,
+          [`${keyBase}.desc1`]: lines[0],
+          [`${keyBase}.desc2`]: lines[1],
+        };
+      }
       return {
         [`${keyBase}.name`]: name || speciesId,
         [`${keyBase}.desc`]: desc || '',
       };
+    }
+
+    /**
+     * 根据描述文本生成 species.pokedex 引用键
+     * - 若文本含换行且有两段，返回 desc1 与 desc2 键
+     * - 否则返回单一 desc 键
+     * @function buildPokedexKeys
+     * @param {string} speciesId - 物种ID
+     * @param {string} descText - 描述文本（英文优先，其次中文）
+     * @returns {string[]} pokedex 键数组
+     */
+    function buildPokedexKeys(speciesId, descText) {
+      const base = `cobblemon.species.${speciesId}`;
+      const lines = typeof descText === 'string' ? descText.split('\n').filter(s => s.trim().length) : [];
+      if (lines.length >= 2) return [ `${base}.desc1`, `${base}.desc2` ];
+      return [ `${base}.desc` ];
     }
 
     /**
@@ -151,11 +207,14 @@ const app = createApp({
      */
     function buildSpeciesJson(form) {
       const json = {
+        // 物种唯一标识，供游戏注册与召唤使用
+        id: form.speciesId,
         implemented: true,
         // 物种显示名优先使用英文名，其次中文名，再次回退 speciesId
         name: form.enName || form.zhName || form.displayName || form.speciesId,
         labels: [ 'custom' ],
-        pokedex: [ `cobblemon.species.${form.speciesId}.desc` ],
+        // pokedex 文本引用：优先使用英文描述，否则中文；按换行自动切分为 desc1/desc2
+        pokedex: buildPokedexKeys(form.speciesId, form.enDesc || form.zhDesc),
         height: form.height,
         weight: form.weight,
         features: [],
@@ -174,7 +233,9 @@ const app = createApp({
         hitbox: { width: form.hitbox?.width ?? 0.8, height: form.hitbox?.height ?? 1.0, fixed: !!(form.hitbox?.fixed) },
       };
       if (form.secondaryType) json.secondaryType = form.secondaryType;
-      if (form.eggGroups && form.eggGroups.length) json.eggGroups = [...form.eggGroups];
+      // 规范化蛋组，限制最多两个；若包含特殊值（ditto/no_eggs）则仅保留单一值
+      const sanitizedEggs = sanitizeEggGroups(form.eggGroups);
+      if (sanitizedEggs.length) json.eggGroups = sanitizedEggs;
       // 解析能力（逗号分隔）
       const abilities = parseAbilities(form.abilitiesText);
       if (abilities.length) json.abilities = abilities;
@@ -187,6 +248,32 @@ const app = createApp({
       const drops = buildDrops(form);
       if (drops) json.drops = drops;
       return json;
+    }
+
+    /**
+     * 规范化蛋组数组，确保输出合法组合
+     * 规则：
+     * - 只允许已知值；去重并保持原顺序
+     * - 最多保留 2 个蛋组
+     * - 若包含 'ditto' 或 'no_eggs'，强制仅保留该单一蛋组
+     * @function sanitizeEggGroups
+     * @param {string[]} groups - 选中的蛋组数组
+     * @returns {string[]} 规范化后的蛋组数组
+     */
+    function sanitizeEggGroups(groups) {
+      if (!Array.isArray(groups)) return [];
+      const allowed = new Set(eggGroupOptions.map(o => o.value));
+      const special = new Set(['ditto', 'no_eggs']);
+      const uniq = [];
+      for (const g of groups) {
+        if (!allowed.has(g)) continue;
+        if (!uniq.includes(g)) uniq.push(g);
+      }
+      // 特殊蛋组只允许单一
+      const hasSpecial = uniq.find(g => special.has(g));
+      if (hasSpecial) return [hasSpecial];
+      // 最多两个
+      return uniq.slice(0, 2);
     }
 
     /**
@@ -220,7 +307,7 @@ const app = createApp({
     function buildBehaviour(form) {
       const b = form.behaviour || {};
       const hasWalk = typeof b.walkSpeed === 'string' ? b.walkSpeed.trim().length > 0 : typeof b.walkSpeed === 'number';
-      const hasSwim = !!b.canSwim || (typeof b.swimSpeed === 'string' ? b.swimSpeed.trim().length > 0 : typeof b.swimSpeed === 'number');
+      const hasSwim = !!b.canSwim || (typeof b.swimSpeed === 'string' ? b.swimSpeed.trim().length > 0 : typeof b.swimSpeed === 'number') || !!b.canSwimInWater || !!b.canBreatheUnderwater;
       const hasFly = !!b.canFly || (typeof b.flySpeed === 'string' ? b.flySpeed.trim().length > 0 : typeof b.flySpeed === 'number');
       const hasSleep = !!b.canSleep || !!b.willSleepOnBed || (typeof b.sleepLight === 'string' && b.sleepLight.trim().length > 0);
       if (!hasWalk && !hasSwim && !hasFly && !hasSleep) return undefined;
@@ -233,13 +320,20 @@ const app = createApp({
           out.moving.walk = { walkSpeed: ws };
         }
       }
+      // moving.canLook
+      if (typeof b.canLook === 'boolean') {
+        out.moving = out.moving || {};
+        out.moving.canLook = b.canLook;
+      }
       // moving.swim
       if (hasSwim) {
         const ss = typeof b.swimSpeed === 'number' ? b.swimSpeed : parseFloat(b.swimSpeed);
         out.moving = out.moving || {};
         out.moving.swim = {
           ...(typeof b.canSwim === 'boolean' ? { canSwim: b.canSwim } : {}),
-          ...(isNaN(ss) ? {} : { swimSpeed: ss })
+          ...(isNaN(ss) ? {} : { swimSpeed: ss }),
+          ...(typeof b.canSwimInWater === 'boolean' ? { canSwimInWater: b.canSwimInWater } : {}),
+          ...(typeof b.canBreatheUnderwater === 'boolean' ? { canBreatheUnderwater: b.canBreatheUnderwater } : {})
         };
       }
       // moving.fly
@@ -276,12 +370,17 @@ const app = createApp({
         .map(s => s.trim())
         .filter(Boolean)
         .map(seg => {
-          // 支持 "item:percent" 或 "item,percent" 两种分隔
-          const parts = seg.includes(':') ? seg.split(':') : seg.split(',');
+          // 语法：item:percent[@qtyRange] 或 item,percent[@qtyRange]
+          const main = seg.split('@');
+          const head = main[0];
+          const qtyRange = (main[1] || '').trim();
+          const parts = head.includes(':') ? head.split(':') : head.split(',');
           const item = (parts[0] || '').trim();
           const pct = parseFloat((parts[1] || '').trim());
-          if (item && !isNaN(pct)) return { item, percentage: pct };
-          return null;
+          if (!item || isNaN(pct)) return null;
+          const out = { item, percentage: pct };
+          if (qtyRange && /^\d+(?:-\d+)?$/.test(qtyRange)) out.quantityRange = qtyRange;
+          return out;
         })
         .filter(Boolean);
     }
@@ -411,9 +510,13 @@ const app = createApp({
       } else {
         form.behaviour.walkSpeed = '';
       }
+      // canLook
+      form.behaviour.canLook = !!(beh?.moving?.canLook);
       // swim
       form.behaviour.canSwim = !!(beh?.moving?.swim?.canSwim);
       form.behaviour.swimSpeed = beh?.moving?.swim?.swimSpeed !== undefined ? beh.moving.swim.swimSpeed : '';
+      form.behaviour.canSwimInWater = !!(beh?.moving?.swim?.canSwimInWater);
+      form.behaviour.canBreatheUnderwater = !!(beh?.moving?.swim?.canBreatheUnderwater);
       // fly
       form.behaviour.canFly = !!(beh?.moving?.fly?.canFly);
       form.behaviour.flySpeed = beh?.moving?.fly?.flySpeed !== undefined ? beh.moving.fly.flySpeed : '';
@@ -423,7 +526,13 @@ const app = createApp({
       const drops = data.drops || {};
       form.dropsMaxAmount = typeof drops.amount === 'number' ? drops.amount : 0;
       form.dropsText = Array.isArray(drops.entries)
-        ? drops.entries.map(e => `${e.item}:${typeof e.percentage === 'number' ? e.percentage : ''}`).join(';')
+        ? drops.entries
+            .map(e => {
+              const pct = typeof e.percentage === 'number' ? e.percentage : '';
+              const qty = e.quantityRange ? `@${e.quantityRange}` : '';
+              return `${e.item}:${pct}${qty}`;
+            })
+            .join(';')
         : '';
       ElementPlus.ElMessage.success('模板导入成功，已填充表单');
     }
@@ -441,6 +550,7 @@ const app = createApp({
         meta: {
           packName: form.packName || (form.speciesId ? `${form.speciesId}-pack` : 'cobble-pack'),
           description: form.packDescription || 'CobbleCreator datapack by JX-YL',
+          packFormat: form.packFormat || 48,
         },
         language: {
           zh_cn: { name: form.zhName || '', desc: form.zhDesc || '' },
@@ -603,6 +713,7 @@ const app = createApp({
         form.namespace = project.namespace || form.namespace;
         form.packName = (project.meta && project.meta.packName) || form.packName;
         form.packDescription = (project.meta && project.meta.description) || form.packDescription;
+        form.packFormat = (project.meta && typeof project.meta.packFormat === 'number') ? project.meta.packFormat : form.packFormat;
 
         const lang = project.language || {};
         const zh = lang.zh_cn || {};
@@ -635,8 +746,11 @@ const app = createApp({
           // 读取行为与掉落
           const beh = s.behaviour || {};
           form.behaviour.walkSpeed = beh?.moving?.walk?.walkSpeed ?? '';
+          form.behaviour.canLook = !!(beh?.moving?.canLook);
           form.behaviour.canSwim = !!(beh?.moving?.swim?.canSwim);
           form.behaviour.swimSpeed = beh?.moving?.swim?.swimSpeed ?? '';
+          form.behaviour.canSwimInWater = !!(beh?.moving?.swim?.canSwimInWater);
+          form.behaviour.canBreatheUnderwater = !!(beh?.moving?.swim?.canBreatheUnderwater);
           form.behaviour.canFly = !!(beh?.moving?.fly?.canFly);
           form.behaviour.flySpeed = beh?.moving?.fly?.flySpeed ?? '';
           form.behaviour.canSleep = !!(beh?.resting?.canSleep);
@@ -645,7 +759,13 @@ const app = createApp({
           const drops = s.drops || {};
           form.dropsMaxAmount = typeof drops.amount === 'number' ? drops.amount : 0;
           form.dropsText = Array.isArray(drops.entries)
-            ? drops.entries.map(e => `${e.item}:${typeof e.percentage === 'number' ? e.percentage : ''}`).join(';')
+            ? drops.entries
+                .map(e => {
+                  const pct = typeof e.percentage === 'number' ? e.percentage : '';
+                  const qty = e.quantityRange ? `@${e.quantityRange}` : '';
+                  return `${e.item}:${pct}${qty}`;
+                })
+                .join(';')
             : form.dropsText;
         }
       } catch (e) {
@@ -769,8 +889,8 @@ const app = createApp({
       const packFolderName = (form.packName || form.speciesId || 'cobble-pack').trim();
       const packRoot = await getDir(root, [packFolderName]);
 
-      // 写入 pack.mcmeta
-      await writeJsonFile(packRoot, 'pack.mcmeta', buildPackMcmeta(form.packDescription));
+      // 写入 pack.mcmeta（支持 v0.3.1 自定义 pack_format）
+      await writeJsonFile(packRoot, 'pack.mcmeta', buildPackMcmeta(form.packDescription, form.packFormat));
 
       // assets/cobblemon/lang：根据中英四项分别生成文件
       const langDir = await getDir(packRoot, ['assets','cobblemon','lang']);
@@ -781,8 +901,8 @@ const app = createApp({
         await writeJsonFile(langDir, 'en_us.json', buildLangJsonForLocale('en_us', form.speciesId, form.enName, form.enDesc));
       }
 
-      // data/cobblemon/species/custom
-      const speciesDir = await getDir(packRoot, ['data','cobblemon','species','custom']);
+      // data/cobblemon/species（将自定义物种直接放在 species 根目录，确保注册）
+      const speciesDir = await getDir(packRoot, ['data','cobblemon','species']);
       await writeJsonFile(speciesDir, `${form.speciesId}.json`, buildSpeciesJson(form));
 
       // data/cobblemon/spawn_pool_world（可选，帮助快速生成出现）
@@ -792,7 +912,36 @@ const app = createApp({
       ElementPlus.ElMessage.success(`导出成功！已生成子文件夹 "${packFolderName}"，请按说明放入 resourcepacks 与 datapacks 测试`);
     }
 
-    return { form, typeOptions, useExample, exportPack, importTemplateFromFile, saveProject, loadProject };
+    // 预览 JSON 文本（只读字符串）
+    const previewSpeciesJson = computed(() => JSON.stringify(buildSpeciesJson(form), null, 2));
+    const previewPackMetaJson = computed(() => JSON.stringify(buildPackMcmeta(form.packDescription, form.packFormat), null, 2));
+
+    /**
+     * 复制文本到剪贴板
+     * @function copyToClipboard
+     * @param {string} text - 需要复制的文本
+     * @returns {Promise<void>}
+     */
+    async function copyToClipboard(text) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        ElementPlus.ElMessage.success('已复制到剪贴板');
+      } catch (e) {
+        console.error(e);
+        ElementPlus.ElMessage.error('复制失败');
+      }
+    }
+
+    return { form, typeOptions, experienceGroupOptions, eggGroupOptions, useExample, exportPack, importTemplateFromFile, saveProject, loadProject, previewSpeciesJson, previewPackMetaJson, copyToClipboard };
   }
 });
 
