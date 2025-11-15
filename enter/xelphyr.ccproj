@@ -1,0 +1,65 @@
+{
+  "version": "0.2.0",
+  "namespace": "jxyl",
+  "meta": {
+    "packName": "xelphyr-pack",
+    "description": "CobbleCreator test project by JX-YL"
+  },
+  "language": {
+    "zh_cn": {
+      "name": "谢尔菲尔",
+      "desc": "测试用虚拟物种 Xelphyr：敏捷、好奇，栖息于高地与洞穴。"
+    },
+    "en_us": {
+      "name": "Xelphyr",
+      "desc": "Test-only species: agile and curious, found in highlands and caves."
+    }
+  },
+  "species": [
+    {
+      "id": "xelphyr",
+      "name": "Xelphyr",
+      "primaryType": "electric",
+      "secondaryType": "fairy",
+      "baseStats": {
+        "hp": 68,
+        "attack": 72,
+        "defence": 62,
+        "special_attack": 88,
+        "special_defence": 70,
+        "speed": 96
+      },
+      "height": 12,
+      "weight": 85,
+      "catchRate": 45,
+      "maleRatio": 0.5,
+      "experienceGroup": "medium_fast",
+      "baseFriendship": 60,
+      "eggGroups": ["field", "fairy"]
+    }
+  ],
+  "spawns": [
+    {
+      "speciesId": "xelphyr",
+      "data": {
+        "enabled": true,
+        "neededInstalledMods": [],
+        "neededUninstalledMods": [],
+        "spawns": [
+          {
+            "id": "xelphyr-example",
+            "pokemon": "xelphyr",
+            "presets": ["underground"],
+            "type": "pokemon",
+            "context": "grounded",
+            "bucket": "rare",
+            "level": "10-30",
+            "weight": 1.0,
+            "condition": { "canSeeSky": false, "biomes": ["#minecraft:is_overworld"] }
+          }
+        ]
+      }
+    }
+  ],
+  "extensions": { "moves": [], "abilities": [], "types": [], "statuses": [], "items": [] }
+}

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CobbleCreator v0.3.0</title>
+    <title>CobbleCreator v0.1.0</title>
     <link rel="preconnect" href="https://unpkg.com" />
     <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
     <style>
@@ -16,7 +16,7 @@
   </head>
   <body>
     <div id="app" class="container">
-      <h2>CobbleCreator v0.3.0 原型</h2>
+      <h2>CobbleCreator v0.1.0 原型</h2>
       <p class="mono">作者：江下犹泷（JX-YL）｜基于 Vue3 + Element Plus</p>
 
       <el-form label-width="140px" label-position="left">
@@ -25,7 +25,7 @@
           <el-form-item label="命名空间">
             <el-input v-model="form.namespace" placeholder="例如 cobblemon" />
           </el-form-item>
-          <el-form-item label="物种ID">
+          <el-form-item label="物种ID" required>
             <el-input v-model="form.speciesId" placeholder="例如 tentaquil" />
           </el-form-item>
 
@@ -53,7 +53,7 @@
           <el-input v-model="form.enDesc" type="textarea" :rows="3" />
         </el-form-item>
 
-        <el-divider>项目文件（v0.3.0）</el-divider>
+        <el-divider>项目文件（v0.2.0）</el-divider>
         <el-alert title="保存/加载项目文件（*.ccproj）不用于直接导入游戏，仅用于二次编辑与分享" type="info" show-icon :closable="false" />
         <div class="footer">
           <el-button type="success" @click="saveProject">保存项目（*.ccproj）</el-button>
@@ -62,57 +62,60 @@
 
       <el-divider>类型与数值</el-divider>
       <div class="grid">
-        <el-form-item label="primaryType[主属性]">
+        <el-form-item label="主属性" required>
           <el-select v-model="form.primaryType" filterable>
-            <el-option v-for="t in typeOptions" :key="t.value" :label="t.label" :value="t.value" />
+            <el-option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
-        <el-form-item label="secondaryType[副属性]">
+        <el-form-item label="副属性">
           <el-select v-model="form.secondaryType" filterable clearable>
-            <el-option v-for="t in typeOptions" :key="t.value" :label="t.label" :value="t.value" />
+            <el-option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
       </div>
 
         <div class="grid">
-          <el-form-item label="HP[生命值]">
+          <el-form-item label="HP" required>
             <el-input-number v-model="form.baseStats.hp" :min="1" :max="255" />
           </el-form-item>
-          <el-form-item label="attack[攻击]">
+          <el-form-item label="攻击" required>
             <el-input-number v-model="form.baseStats.attack" :min="1" :max="255" />
           </el-form-item>
-          <el-form-item label="defence[防御]">
+          <el-form-item label="防御" required>
             <el-input-number v-model="form.baseStats.defence" :min="1" :max="255" />
           </el-form-item>
-          <el-form-item label="special_attack[特攻]">
+          <el-form-item label="特攻" required>
             <el-input-number v-model="form.baseStats.special_attack" :min="1" :max="255" />
           </el-form-item>
-          <el-form-item label="special_defence[特防]">
+          <el-form-item label="特防" required>
             <el-input-number v-model="form.baseStats.special_defence" :min="1" :max="255" />
           </el-form-item>
-          <el-form-item label="speed[速度]">
+          <el-form-item label="速度" required>
             <el-input-number v-model="form.baseStats.speed" :min="1" :max="255" />
           </el-form-item>
         </div>
 
-        <el-divider>努力值分配（EV Yield）</el-divider>
+        <el-divider>能力与 EV（v0.3.0）</el-divider>
+        <el-form-item label="特性（逗号分隔）">
+          <el-input v-model="form.abilitiesText" placeholder="例如 cutecharm, h:unaware" />
+        </el-form-item>
         <div class="grid">
-          <el-form-item label="EV HP[生命值]">
+          <el-form-item label="EV-HP">
             <el-input-number v-model="form.evYield.hp" :min="0" :max="3" />
           </el-form-item>
-          <el-form-item label="EV attack[攻击]">
+          <el-form-item label="EV-攻击">
             <el-input-number v-model="form.evYield.attack" :min="0" :max="3" />
           </el-form-item>
-          <el-form-item label="EV defence[防御]">
+          <el-form-item label="EV-防御">
             <el-input-number v-model="form.evYield.defence" :min="0" :max="3" />
           </el-form-item>
-          <el-form-item label="EV special_attack[特攻]">
+          <el-form-item label="EV-特攻">
             <el-input-number v-model="form.evYield.special_attack" :min="0" :max="3" />
           </el-form-item>
-          <el-form-item label="EV special_defence[特防]">
+          <el-form-item label="EV-特防">
             <el-input-number v-model="form.evYield.special_defence" :min="0" :max="3" />
           </el-form-item>
-          <el-form-item label="EV speed[速度]">
+          <el-form-item label="EV-速度">
             <el-input-number v-model="form.evYield.speed" :min="0" :max="3" />
           </el-form-item>
         </div>
@@ -135,211 +138,110 @@
 
         <el-divider>成长与亲密</el-divider>
         <div class="grid">
-          <el-form-item label="experienceGroup[成长速率]">
+          <el-form-item label="成长速率（exp group)">
             <el-select v-model="form.experienceGroup" filterable>
-              <el-option v-for="o in expGroupOptions" :key="o.value" :label="o.label" :value="o.value" />
+              <el-option label="slow" value="slow" />
+              <el-option label="medium_slow" value="medium_slow" />
+              <el-option label="medium_fast" value="medium_fast" />
+              <el-option label="fast" value="fast" />
+              <el-option label="fluctuating" value="fluctuating" />
+              <el-option label="erratic" value="erratic" />
             </el-select>
           </el-form-item>
-          <el-form-item label="baseFriendship[基础亲密度]">
+          <el-form-item label="基础亲密度">
             <el-input-number v-model="form.baseFriendship" :min="0" :max="255" />
           </el-form-item>
-          <el-form-item label="baseExperienceYield[基础经验值]">
-            <el-input-number v-model="form.baseExperienceYield" :min="0" :max="999" />
+        </div>
+
+        <el-divider>成长扩展（v0.3.0）</el-divider>
+        <div class="grid">
+          <el-form-item label="基础经验产出">
+            <el-input-number v-model="form.baseExperienceYield" :min="0" :max="1000" />
           </el-form-item>
-          <el-form-item label="eggCycles[蛋轮数]">
-            <el-input-number v-model="form.eggCycles" :min="1" :max="255" />
+          <el-form-item label="蛋周期">
+            <el-input-number v-model="form.eggCycles" :min="1" :max="100" />
           </el-form-item>
         </div>
 
         <el-divider>蛋组（可多选）</el-divider>
-        <el-form-item label="eggGroups[蛋组]">
+        <el-form-item label="Egg Groups">
           <el-select v-model="form.eggGroups" multiple filterable allow-create default-first-option>
-            <el-option v-for="g in eggGroupOptions" :key="g.value" :label="g.label" :value="g.value" />
+            <el-option label="monster" value="monster" />
+            <el-option label="field" value="field" />
+            <el-option label="fairy" value="fairy" />
+            <el-option label="dragon" value="dragon" />
+            <el-option label="bug" value="bug" />
+            <el-option label="flying" value="flying" />
+            <el-option label="mineral" value="mineral" />
+            <el-option label="amorphous" value="amorphous" />
+            <el-option label="grass" value="grass" />
+            <el-option label="human_like" value="human_like" />
+            <el-option label="water_1" value="water_1" />
+            <el-option label="water_2" value="water_2" />
+            <el-option label="water_3" value="water_3" />
+            <el-option label="ditto" value="ditto" />
+            <el-option label="no_eggs" value="no_eggs" />
           </el-select>
         </el-form-item>
 
-        <el-divider>其它配置</el-divider>
+        <el-divider>模型与碰撞（v0.3.0）</el-divider>
         <div class="grid">
-          <el-form-item label="shoulderMountable[是否可肩扛]">
+          <el-form-item label="缩放（baseScale）">
+            <el-input-number v-model="form.baseScale" :min="0.1" :max="5" :step="0.1" />
+          </el-form-item>
+          <el-form-item label="肩载（shoulderMountable）">
             <el-switch v-model="form.shoulderMountable" />
           </el-form-item>
-          <el-form-item label="preEvolution[进化前]">
-            <el-input v-model="form.preEvolution" placeholder="例如: pitipole" />
+          <el-form-item label="碰撞宽度">
+            <el-input-number v-model="form.hitbox.width" :min="0.1" :max="5" :step="0.05" />
           </el-form-item>
-        </div>
-
-        <el-divider>碰撞箱与缩放</el-divider>
-        <div class="grid">
-          <el-form-item label="collisionBox.width[碰撞箱宽]">
-            <el-input-number v-model="form.collisionBox.width" :min="0.1" :step="0.1" />
+          <el-form-item label="碰撞高度">
+            <el-input-number v-model="form.hitbox.height" :min="0.1" :max="5" :step="0.05" />
           </el-form-item>
-          <el-form-item label="collisionBox.height[碰撞箱高]">
-            <el-input-number v-model="form.collisionBox.height" :min="0.1" :step="0.1" />
-          </el-form-item>
-          <el-form-item label="scale[缩放]">
-            <el-input-number v-model="form.scale" :min="0.1" :step="0.1" />
+          <el-form-item label="碰撞固定">
+            <el-switch v-model="form.hitbox.fixed" />
           </el-form-item>
         </div>
 
         <el-divider>行为与掉落</el-divider>
-        <el-form-item label="behaviors[行为标签]">
-          <el-select v-model="form.behaviors" multiple filterable allow-create default-first-option>
-            <el-option v-for="opt in behaviorOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-          </el-select>
-        </el-form-item>
-        <!-- 细化行为与掉落参数 -->
         <div class="grid">
           <el-form-item label="行走速度">
-            <el-input v-model="form.walkSpeed" placeholder="0.42" />
+            <el-input v-model="form.behaviour.walkSpeed" placeholder="例如 0.42" />
           </el-form-item>
-          <el-form-item label="启用骑乘">
-            <el-switch v-model="form.enableRiding" />
+          <el-form-item label="可游泳">
+            <el-switch v-model="form.behaviour.canSwim" />
+          </el-form-item>
+          <el-form-item label="游泳速度">
+            <el-input v-model="form.behaviour.swimSpeed" placeholder="例如 0.35" />
+          </el-form-item>
+          <el-form-item label="可飞行">
+            <el-switch v-model="form.behaviour.canFly" />
+          </el-form-item>
+          <el-form-item label="飞行速度">
+            <el-input v-model="form.behaviour.flySpeed" placeholder="例如 0.6" />
           </el-form-item>
           <el-form-item label="可睡觉">
-            <el-select v-model="form.canSleep" clearable placeholder="(默认)">
-              <el-option label="是" :value="true" />
-              <el-option label="否" :value="false" />
-            </el-select>
+            <el-switch v-model="form.behaviour.canSleep" />
           </el-form-item>
           <el-form-item label="在床上睡">
-            <el-select v-model="form.sleepOnBed" clearable placeholder="(默认)">
-              <el-option label="是" :value="true" />
-              <el-option label="否" :value="false" />
-            </el-select>
+            <el-switch v-model="form.behaviour.willSleepOnBed" />
           </el-form-item>
           <el-form-item label="睡眠光照（如 0-4）">
-            <el-input v-model="form.sleepLightLevel" placeholder="0-4" />
+            <el-input v-model="form.behaviour.sleepLight" placeholder="例如 0-4" />
           </el-form-item>
           <el-form-item label="掉落（item:percent；分号分隔）">
-            <el-input v-model="form.dropsString" placeholder="cobblemon:light_ball:5;minecraft:apple:10" @change="syncDropsBetweenInputs('string')" />
+            <el-input v-model="form.dropsText" placeholder="示例：cobblemon:light_ball:5;minecraft:apple:10" />
           </el-form-item>
           <el-form-item label="掉落最大数量">
-            <el-input-number v-model="form.maxDrops" :min="1" :max="99" />
+            <el-input-number v-model="form.dropsMaxAmount" :min="0" :max="10" />
           </el-form-item>
         </div>
-        <el-form-item label="drops[掉落 JSON]">
-          <el-input type="textarea" :rows="4" v-model="form.dropsText" @change="syncDropsBetweenInputs('json')" placeholder='示例: [{"itemId":"cobblemon:poison_barb","countMin":1,"countMax":1,"chance":0.25}]' />
-        </el-form-item>
-        <div class="grid">
-          <el-form-item label="forms[形态]">
-            <el-select v-model="form.forms" multiple filterable allow-create default-first-option>
-              <el-option v-for="opt in formOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="features[特性]">
-            <el-select v-model="form.features" multiple filterable allow-create default-first-option>
-              <el-option v-for="opt in featuresOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="aspects[方面]">
-            <el-select v-model="form.aspects" multiple filterable allow-create default-first-option>
-              <el-option v-for="opt in aspectsOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-          </el-form-item>
-        </div>
-
-        <el-divider>形态能力配置</el-divider>
-        <el-alert type="info" title="为每个形态配置移动/游泳/睡眠能力；留空使用默认参数" show-icon :closable="false" />
-        <div class="grid" style="margin:12px 0;">
-          <el-form-item label="复制源形态">
-            <el-select v-model="copySourceForm" placeholder="选择源形态" :disabled="!form.forms || !form.forms.length">
-              <el-option v-for="name in form.forms" :key="name" :label="name" :value="name" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="目标形态">
-            <el-select v-model="copyTargetForms" multiple placeholder="选择目标形态" :disabled="!form.forms || !form.forms.length">
-              <el-option v-for="name in form.forms" :key="name" :label="name" :value="name" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="模式">
-            <el-radio-group v-model="copyMode">
-              <el-radio label="overwrite">覆盖</el-radio>
-              <el-radio label="merge">合并（仅填充空值）</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :disabled="!copySourceForm || !copyTargetForms.length" @click="() => copyFormAbilities(copySourceForm, copyTargetForms, copyMode)">复制能力到目标形态</el-button>
-          </el-form-item>
-        </div>
-        <el-collapse v-model="activeFormPanels" accordion>
-          <el-collapse-item v-for="name in form.forms" :key="name" :name="name" :title="name">
-            <div v-if="initFormBehavior(name)">
-              <div class="grid grid-cols-2 gap-16">
-                <el-form-item label="moving.walkSpeed[行走速度]">
-                  <div style="display:flex;gap:8px;align-items:center;">
-                    <el-input-number v-model="form.formBehaviors[name].moving.walkSpeed" :step="0.01" :min="0" :max="10" @change="() => handleSpeedChange(name, 'walk')" />
-                    <el-button-group>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'walk','slow')">慢</el-button>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'walk','normal')">常</el-button>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'walk','fast')">快</el-button>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'walk','rapid')">疾</el-button>
-                    </el-button-group>
-                  </div>
-                </el-form-item>
-                <el-form-item label="enableRiding[启用骑乘]">
-                  <el-switch v-model="form.formBehaviors[name].enableRiding" />
-                </el-form-item>
-
-                <el-form-item label="fly.canFly[可飞行]">
-                  <el-switch v-model="form.formBehaviors[name].fly.canFly" />
-                </el-form-item>
-                <el-form-item label="swim.canSwimInWater[可在水中游泳]">
-                  <el-switch v-model="form.formBehaviors[name].swim.canSwimInWater" />
-                </el-form-item>
-                <el-form-item label="swim.swimSpeed[游泳速度]">
-                  <div style="display:flex;gap:8px;align-items:center;">
-                    <el-input-number v-model="form.formBehaviors[name].swim.swimSpeed" :step="0.01" :min="0" :max="10" @change="() => handleSpeedChange(name, 'swim')" />
-                    <el-button-group>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'swim','slow')">慢</el-button>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'swim','normal')">常</el-button>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'swim','fast')">快</el-button>
-                      <el-button size="small" @click="() => applySpeedPreset(name,'swim','rapid')">疾</el-button>
-                    </el-button-group>
-                  </div>
-                </el-form-item>
-                <el-form-item label="swim.canBreatheUnderwater[水下呼吸]">
-                  <el-switch v-model="form.formBehaviors[name].swim.canBreatheUnderwater" />
-                </el-form-item>
-
-                <el-form-item label="sleep.canSleep[可睡觉]">
-                  <el-select v-model="form.formBehaviors[name].sleep.canSleep" placeholder="默认继承">
-                    <el-option :value="null" label="default[默认]" />
-                    <el-option :value="true" label="true[是]" />
-                    <el-option :value="false" label="false[否]" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="sleep.sleepOnBed[在床上睡]">
-                  <el-select v-model="form.formBehaviors[name].sleep.sleepOnBed" placeholder="默认继承">
-                    <el-option :value="null" label="default[默认]" />
-                    <el-option :value="true" label="true[是]" />
-                    <el-option :value="false" label="false[否]" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="sleep.lightLevel[睡眠光照]">
-                  <el-input v-model="form.formBehaviors[name].sleep.lightLevel" placeholder="如 0-4" />
-                </el-form-item>
-              </div>
-            </div>
-          </el-collapse-item>
-        </el-collapse>
 
         <div class="footer">
           <el-button type="primary" @click="exportPack">导出数据包</el-button>
           <el-button @click="useExample">填充示例</el-button>
           <el-button @click="() => $refs.fileInput.click()">导入参考Species模板</el-button>
           <input ref="fileInput" type="file" accept=".json" style="display:none" @change="(e) => importTemplateFromFile(e.target.files[0])" />
-        </div>
-
-        <el-divider>说明中心</el-divider>
-        <div class="grid">
-          <el-form-item label="选择变量(英文[中文])">
-            <el-select v-model="helpKey" filterable>
-              <el-option v-for="k in helpKeyOptions" :key="k.value" :label="k.label" :value="k.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="查看说明">
-            <el-button @click="showFieldHelp(helpKey)" type="info">点击显示说明与示例</el-button>
-          </el-form-item>
         </div>
       </el-form>
     </div>
