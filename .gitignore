@@ -1,27 +1,8 @@
-# OS
-Thumbs.db
-.DS_Store
+# Export and input directories (local only)
+enter/
+putout/
 
-# Logs
-*.log
-
-# Build & temp
-dist/
-build/
-.tmp/
-.cache/
-coverage/
-
-# Node
+# Node/Vue typical ignores (future-proof)
 node_modules/
-
-# Python
-__pycache__/
-*.pyc
-
-# IDE/Editor
-.vscode/
-
-# Keep project files
-#! Do not ignore .ccproj in enter/
-#! enter/*.ccproj should be tracked
+.DS_Store
+*.log
