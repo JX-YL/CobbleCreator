@@ -32,3 +32,11 @@
 - 掉落：解析文本新增可选数量范围语法（`item:percent@数量范围`），导出与项目回填保持一致。
 - 包格式：保留 `pack_format` 自定义字段并在导出时写入。
 - 测试：使用本地测试项目 `stormshade.ccproj` 验证召唤与导出结构（不随版本发布打包）。
+
+## v0.4.0 (技能配置与示例项目)
+- 新增：技能配置（升级/蛋/招式机/导师）UI 与状态管理；支持在表单中动态添加/删除技能条目。
+- 新增：`species.moves` 字段序列化与解析；项目保存/加载（`*.ccproj`）与模板导入全面支持该字段。
+- 新增：示例项目 <mcfile name="aurorafang.ccproj" path="e:\AI Super Personal Studio\Workspace\Cobblemon\CobbleCreator\enter\aurorafang.ccproj"></mcfile> 用于验证 `moves` 功能，不使用原版物种。
+- 预览：`previewSpeciesJson` 现包含 `moves` 字段，便于快速检查输出格式（如 `20:crushclaw`、`egg:aquajet`、`tm:protect`、`tutor:superpower`）。
+- 兼容：保持 File System Access API 与回退下载/选择的导出与加载流程一致。
+- 标签：发布 `v0.4.0-alpha` 作为预发布验证版本。

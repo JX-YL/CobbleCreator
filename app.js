@@ -10,6 +10,14 @@ const app = createApp({
       'normal','fire','water','grass','electric','ice','fighting','poison','ground','flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy'
     ];
 
+    // v0.4.0：技能学习方式选项
+    const moveMethodOptions = [
+      { label: '升级学习（Level）', value: 'level' },
+      { label: '蛋招（Egg）', value: 'egg' },
+      { label: '招式机（TM）', value: 'tm' },
+      { label: '导师（Tutor）', value: 'tutor' }
+    ];
+
     // 成长速率与蛋组选项（带中文标签），用于下拉选择
     const experienceGroupOptions = [
       { label: '慢速 slow', value: 'slow' },
@@ -97,6 +105,9 @@ const app = createApp({
       },
       dropsText: '',
       dropsMaxAmount: 0,
+      // v0.4.0：技能配置（moves）
+      /** @type {Array<{method:'level'|'egg'|'tm'|'tutor', level?:number, name:string}>} */
+      moves: [],
     });
 
     /**
@@ -239,6 +250,9 @@ const app = createApp({
       // 解析能力（逗号分隔）
       const abilities = parseAbilities(form.abilitiesText);
       if (abilities.length) json.abilities = abilities;
+      // v0.4.0：写入技能 moves 字段
+      const moves = buildMoves(form.moves);
+      if (moves.length) json.moves = moves;
       // 蛋周期（可选）
       if (typeof form.eggCycles === 'number') json.eggCycles = form.eggCycles;
       // 行为（可选）
@@ -248,6 +262,62 @@ const app = createApp({
       const drops = buildDrops(form);
       if (drops) json.drops = drops;
       return json;
+    }
+
+    /**
+     * 将 UI 的 moves 列表序列化为 Cobblemon species JSON 的字符串数组
+     * - level: "<level>:<move>"，示例 "20:crushclaw"
+     * - egg:   "egg:<move>"
+     * - tm:    "tm:<move>"
+     * - tutor: "tutor:<move>"
+     * @function buildMoves
+     * @param {Array<{method:'level'|'egg'|'tm'|'tutor', level?:number, name:string}>} movesList - UI 列表
+     * @returns {string[]} Cobblemon 支持的 moves 字符串数组
+     */
+    function buildMoves(movesList) {
+      if (!Array.isArray(movesList)) return [];
+      const out = [];
+      for (const m of movesList) {
+        if (!m || typeof m.name !== 'string' || !m.name.trim()) continue;
+        const name = m.name.trim();
+        switch (m.method) {
+          case 'level': {
+            const lv = typeof m.level === 'number' ? m.level : parseInt(m.level ?? '', 10);
+            if (!isNaN(lv) && lv > 0) out.push(`${lv}:${name}`);
+            break;
+          }
+          case 'egg': out.push(`egg:${name}`); break;
+          case 'tm': out.push(`tm:${name}`); break;
+          case 'tutor': out.push(`tutor:${name}`); break;
+          default: break;
+        }
+      }
+      return out;
+    }
+
+    /**
+     * 解析 species JSON 中的 moves 字符串数组为 UI 可编辑对象列表
+     * @function parseMoves
+     * @param {string[]} arr - species.moves 字符串数组
+     * @returns {Array<{method:'level'|'egg'|'tm'|'tutor', level?:number, name:string}>}
+     */
+    function parseMoves(arr) {
+      if (!Array.isArray(arr)) return [];
+      const out = [];
+      for (const s of arr) {
+        if (typeof s !== 'string' || !s.trim()) continue;
+        const seg = s.trim();
+        const colonIdx = seg.indexOf(':');
+        if (colonIdx <= 0) continue;
+        const left = seg.slice(0, colonIdx);
+        const right = seg.slice(colonIdx + 1);
+        if (/^\d+$/.test(left)) {
+          out.push({ method: 'level', level: parseInt(left, 10), name: right });
+        } else if (left === 'egg' || left === 'tm' || left === 'tutor') {
+          out.push({ method: /** @type {'egg'|'tm'|'tutor'} */(left), name: right });
+        }
+      }
+      return out;
     }
 
     /**
@@ -534,6 +604,8 @@ const app = createApp({
             })
             .join(';')
         : '';
+      // v0.4.0：从模板读取 moves
+      form.moves = Array.isArray(data.moves) ? parseMoves(data.moves) : [];
       ElementPlus.ElMessage.success('模板导入成功，已填充表单');
     }
 
@@ -571,6 +643,8 @@ const app = createApp({
             experienceGroup: form.experienceGroup,
             baseExperienceYield: form.baseExperienceYield,
             baseFriendship: form.baseFriendship,
+            // v0.4.0：项目文件也存储 moves（字符串数组与 species 一致）
+            moves: buildMoves(form.moves),
             eggGroups: Array.isArray(form.eggGroups) ? [...form.eggGroups] : [],
             eggCycles: typeof form.eggCycles === 'number' ? form.eggCycles : undefined,
             abilities: parseAbilities(form.abilitiesText),
@@ -737,6 +811,8 @@ const app = createApp({
           form.experienceGroup = s.experienceGroup || form.experienceGroup;
           form.baseExperienceYield = typeof s.baseExperienceYield === 'number' ? s.baseExperienceYield : form.baseExperienceYield;
           form.baseFriendship = typeof s.baseFriendship === 'number' ? s.baseFriendship : form.baseFriendship;
+          // v0.4.0：moves 回填 UI
+          form.moves = Array.isArray(s.moves) ? parseMoves(s.moves) : [];
           form.eggGroups = Array.isArray(s.eggGroups) ? s.eggGroups : [];
           form.eggCycles = typeof s.eggCycles === 'number' ? s.eggCycles : form.eggCycles;
           form.abilitiesText = Array.isArray(s.abilities) ? s.abilities.join(', ') : form.abilitiesText;
@@ -941,7 +1017,24 @@ const app = createApp({
       }
     }
 
-    return { form, typeOptions, experienceGroupOptions, eggGroupOptions, useExample, exportPack, importTemplateFromFile, saveProject, loadProject, previewSpeciesJson, previewPackMetaJson, copyToClipboard };
+    // v0.4.0：技能编辑辅助函数
+    /**
+     * 添加一条默认技能记录，便于开始编辑。
+     * @function addMoveRow
+     */
+    function addMoveRow() {
+      form.moves.push({ method: 'level', level: 1, name: '' });
+    }
+    /**
+     * 移除指定索引的技能记录。
+     * @function removeMoveRow
+     * @param {number} idx - 索引
+     */
+    function removeMoveRow(idx) {
+      if (idx >= 0 && idx < form.moves.length) form.moves.splice(idx, 1);
+    }
+
+    return { form, typeOptions, moveMethodOptions, experienceGroupOptions, eggGroupOptions, useExample, exportPack, importTemplateFromFile, saveProject, loadProject, previewSpeciesJson, previewPackMetaJson, copyToClipboard, addMoveRow, removeMoveRow };
   }
 });
 

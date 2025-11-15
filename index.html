@@ -35,6 +35,9 @@
           <el-form-item label="包名称">
             <el-input v-model="form.packName" placeholder="例如 tentaquil-pack" />
           </el-form-item>
+          <el-form-item label="资源包格式（pack_format）">
+            <el-input-number v-model="form.packFormat" :min="1" :max="999" :step="1" />
+          </el-form-item>
         </div>
 
         <el-divider>语言配置</el-divider>
@@ -139,13 +142,8 @@
         <el-divider>成长与亲密</el-divider>
         <div class="grid">
           <el-form-item label="成长速率（exp group)">
-            <el-select v-model="form.experienceGroup" filterable>
-              <el-option label="slow" value="slow" />
-              <el-option label="medium_slow" value="medium_slow" />
-              <el-option label="medium_fast" value="medium_fast" />
-              <el-option label="fast" value="fast" />
-              <el-option label="fluctuating" value="fluctuating" />
-              <el-option label="erratic" value="erratic" />
+            <el-select v-model="form.experienceGroup" filterable clearable placeholder="请选择成长速率">
+              <el-option v-for="opt in experienceGroupOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
           </el-form-item>
           <el-form-item label="基础亲密度">
@@ -165,23 +163,10 @@
 
         <el-divider>蛋组（可多选）</el-divider>
         <el-form-item label="Egg Groups">
-          <el-select v-model="form.eggGroups" multiple filterable allow-create default-first-option>
-            <el-option label="monster" value="monster" />
-            <el-option label="field" value="field" />
-            <el-option label="fairy" value="fairy" />
-            <el-option label="dragon" value="dragon" />
-            <el-option label="bug" value="bug" />
-            <el-option label="flying" value="flying" />
-            <el-option label="mineral" value="mineral" />
-            <el-option label="amorphous" value="amorphous" />
-            <el-option label="grass" value="grass" />
-            <el-option label="human_like" value="human_like" />
-            <el-option label="water_1" value="water_1" />
-            <el-option label="water_2" value="water_2" />
-            <el-option label="water_3" value="water_3" />
-            <el-option label="ditto" value="ditto" />
-            <el-option label="no_eggs" value="no_eggs" />
+          <el-select v-model="form.eggGroups" multiple filterable clearable collapse-tags :multiple-limit="2" placeholder="可选择至多 2 个蛋组">
+            <el-option v-for="opt in eggGroupOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
+          <div style="margin-top:4px;color:#909399;font-size:12px;">若选择“百变怪”或“不可孵化”，仅保留该单一蛋组。</div>
         </el-form-item>
 
         <el-divider>模型与碰撞（v0.3.0）</el-divider>
@@ -203,16 +188,49 @@
           </el-form-item>
         </div>
 
+        <el-divider>技能配置（v0.4.0）</el-divider>
+        <el-alert title="配置宝可梦可学习的技能。支持方式：升级/蛋招/TM/导师；升级学习需填写等级，其他方式只需填写技能标识。示例技能标识：crushclaw" type="success" show-icon :closable="false" />
+        <div class="footer" style="margin-top:12px;">
+          <el-button type="primary" @click="addMoveRow">新增技能</el-button>
+        </div>
+        <div v-for="(mv, idx) in form.moves" :key="idx" style="margin:12px 0; padding:12px; border:1px solid #243040; border-radius:8px;">
+          <div class="grid">
+            <el-form-item label="学习方式">
+              <el-select v-model="mv.method" placeholder="选择学习方式">
+                <el-option v-for="opt in moveMethodOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item v-if="mv.method==='level'" label="等级">
+              <el-input-number v-model="mv.level" :min="1" :max="100" />
+            </el-form-item>
+            <el-form-item label="技能标识">
+              <el-input v-model="mv.name" placeholder="例如 crushclaw" />
+            </el-form-item>
+            <el-form-item label="操作">
+              <el-button type="danger" @click="removeMoveRow(idx)">删除</el-button>
+            </el-form-item>
+          </div>
+        </div>
+
         <el-divider>行为与掉落</el-divider>
         <div class="grid">
           <el-form-item label="行走速度">
             <el-input v-model="form.behaviour.walkSpeed" placeholder="例如 0.42" />
+          </el-form-item>
+          <el-form-item label="主动环视">
+            <el-switch v-model="form.behaviour.canLook" />
           </el-form-item>
           <el-form-item label="可游泳">
             <el-switch v-model="form.behaviour.canSwim" />
           </el-form-item>
           <el-form-item label="游泳速度">
             <el-input v-model="form.behaviour.swimSpeed" placeholder="例如 0.35" />
+          </el-form-item>
+          <el-form-item label="水中游泳">
+            <el-switch v-model="form.behaviour.canSwimInWater" />
+          </el-form-item>
+          <el-form-item label="水下呼吸">
+            <el-switch v-model="form.behaviour.canBreatheUnderwater" />
           </el-form-item>
           <el-form-item label="可飞行">
             <el-switch v-model="form.behaviour.canFly" />
@@ -229,8 +247,8 @@
           <el-form-item label="睡眠光照（如 0-4）">
             <el-input v-model="form.behaviour.sleepLight" placeholder="例如 0-4" />
           </el-form-item>
-          <el-form-item label="掉落（item:percent；分号分隔）">
-            <el-input v-model="form.dropsText" placeholder="示例：cobblemon:light_ball:5;minecraft:apple:10" />
+          <el-form-item label="掉落（item:percent@数量范围；分号分隔）">
+            <el-input v-model="form.dropsText" placeholder="示例：cobblemon:light_ball:5@1-2;minecraft:apple:10" />
           </el-form-item>
           <el-form-item label="掉落最大数量">
             <el-input-number v-model="form.dropsMaxAmount" :min="0" :max="10" />
@@ -242,6 +260,22 @@
           <el-button @click="useExample">填充示例</el-button>
           <el-button @click="() => $refs.fileInput.click()">导入参考Species模板</el-button>
           <input ref="fileInput" type="file" accept=".json" style="display:none" @change="(e) => importTemplateFromFile(e.target.files[0])" />
+        </div>
+
+        <el-divider>JSON 预览与复制（v0.3.1）</el-divider>
+        <div class="grid">
+          <el-form-item label="pack.mcmeta 预览">
+            <el-input class="mono" type="textarea" :rows="8" :model-value="previewPackMetaJson" readonly />
+            <div class="footer">
+              <el-button @click="() => copyToClipboard(previewPackMetaJson)">复制 pack.mcmeta</el-button>
+            </div>
+          </el-form-item>
+          <el-form-item label="species 预览">
+            <el-input class="mono" type="textarea" :rows="8" :model-value="previewSpeciesJson" readonly />
+            <div class="footer">
+              <el-button @click="() => copyToClipboard(previewSpeciesJson)">复制 species</el-button>
+            </div>
+          </el-form-item>
         </div>
       </el-form>
     </div>
